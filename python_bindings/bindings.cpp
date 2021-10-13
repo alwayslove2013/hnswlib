@@ -635,7 +635,7 @@ public:
 
     }
 
-    py::object knnQuery_forvis_return_numpy(py::object input, size_t k = 1, int num_threads = -1) {
+    py::object knnQuery_for_vis_return_numpy(py::object input, size_t k = 1, int num_threads = -1) {
 
         py::array_t < dist_t, py::array::c_style | py::array::forcecast > items(input);
         auto buffer = items.request();
@@ -771,7 +771,7 @@ PYBIND11_PLUGIN(hnswlib) {
         .def(py::init<const std::string &, const int>(), py::arg("space"), py::arg("dim"))
         .def("init_index", &Index<float>::init_new_index, py::arg("max_elements"), py::arg("M")=16, py::arg("ef_construction")=200, py::arg("random_seed")=100)
         .def("knn_query", &Index<float>::knnQuery_return_numpy, py::arg("data"), py::arg("k")=1, py::arg("num_threads")=-1)
-        // .def("knn_query", &Index<float>::knnQuery_forvis_return_numpy, py::arg("data"), py::arg("k")=1, py::arg("num_threads")=-1)
+        .def("knn_query_for_vis", &Index<float>::knnQuery_for_vis_return_numpy, py::arg("data"), py::arg("k")=1, py::arg("num_threads")=-1)
         .def("add_items", &Index<float>::addItems, py::arg("data"), py::arg("ids") = py::none(), py::arg("num_threads")=-1)
         .def("get_items", &Index<float, float>::getDataReturnList, py::arg("ids") = py::none())
         .def("get_ids_list", &Index<float>::getIdsList)
