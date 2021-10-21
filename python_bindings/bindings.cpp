@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <tuple>
+#include <map>
 
 namespace py = pybind11;
 using namespace pybind11::literals; // needed to bring in _a literal
@@ -643,6 +644,12 @@ public:
         dist_t *data_numpy_d;
         size_t rows, features;
 
+        std::map<int, 
+            std::vector<
+                std::vector<std::tuple<int, int, dist_t>>
+            >
+        > data_visited_records;
+
         if (num_threads <= 0)
             num_threads = num_threads_default;
 
@@ -668,6 +675,7 @@ public:
 
             data_numpy_l = new hnswlib::labeltype[rows * k];
             data_numpy_d = new dist_t[rows * k];
+            // data_visited_records = new std::vector<std::vector<std::tuple<int, int, dist_t>>>[rows];
 
             if(normalize==false) {
                 ParallelFor(0, rows, num_threads, [&](size_t row, size_t threadId) {
@@ -676,7 +684,9 @@ public:
                                     std::vector<std::vector<std::tuple<int, int, dist_t>>>
                                 > res = appr_alg->searchKnnForVis(
                                         (void *) items.data(row), k);
-                                
+
+                                data_visited_records[row] = res.second;
+
                                 std::priority_queue<std::pair<dist_t, hnswlib::labeltype >> result = res.first;
                                 if (result.size() != k)
                                     throw std::runtime_error(
@@ -703,6 +713,9 @@ public:
                                     std::vector<std::vector<std::tuple<int, int, dist_t>>>
                                 > res = appr_alg->searchKnnForVis(
                                         (void *) (norm_array.data()+start_idx), k);
+
+                                data_visited_records[row] = res.second;
+
                                 std::priority_queue<std::pair<dist_t, hnswlib::labeltype >> result = res.first;
                                 if (result.size() != k)
                                     throw std::runtime_error(
@@ -737,7 +750,9 @@ public:
                         {rows, k}, // shape
                         {k * sizeof(dist_t), sizeof(dist_t)}, // C-style contiguous strides for double
                         data_numpy_d, // the data pointer
-                        free_when_done_d));
+                        free_when_done_d),
+                data_visited_records
+            );
 
     }
 
