@@ -1190,12 +1190,12 @@ namespace hnswlib {
 
         std::pair<
             std::priority_queue<std::pair<dist_t, labeltype >>,
-            std::vector<std::vector<std::tuple<int, int, dist_t>>>
+            std::vector<std::vector<std::tuple<labeltype, labeltype, dist_t>>>
         >
         searchKnnForVis(const void *query_data, size_t k) const {
             std::priority_queue<std::pair<dist_t, labeltype >> result;
             std::vector<
-                std::vector<std::tuple<int, int, dist_t>>
+                std::vector<std::tuple<labeltype, labeltype, dist_t>>
             > visited_records;
             // if (cur_element_count == 0) return result;
             if (cur_element_count == 0) return std::make_pair(result, visited_records);
@@ -1205,8 +1205,8 @@ namespace hnswlib {
 
             // ef = 1
             for (int level = maxlevel_; level > 0; level--) {
-                std::vector<std::tuple<int, int, dist_t>> visited_record_level;
-                visited_record_level.push_back(std::make_tuple(-1, currObj, curdist));
+                std::vector<std::tuple<labeltype, labeltype, dist_t>> visited_record_level;
+                visited_record_level.push_back(std::make_tuple(getExternalLabel(currObj), getExternalLabel(currObj), curdist));
                 bool changed = true;
                 while (changed) {
                     changed = false;
@@ -1223,7 +1223,7 @@ namespace hnswlib {
                         if (cand < 0 || cand > max_elements_)
                             throw std::runtime_error("cand error");
                         dist_t d = fstdistfunc_(query_data, getDataByInternalId(cand), dist_func_param_);
-                        visited_record_level.push_back(std::make_tuple(currObj, cand, d));
+                        visited_record_level.push_back(std::make_tuple(getExternalLabel(currObj), getExternalLabel(cand), d));
 
                         if (d < curdist) {
                             curdist = d;
@@ -1237,10 +1237,10 @@ namespace hnswlib {
 
             std::pair<
                 std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst>,
-                std::vector<std::tuple<int, int, dist_t>>
+                std::vector<std::tuple<labeltype, labeltype, dist_t>>
             > res;
             std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> top_candidates;
-            std::vector<std::tuple<int, int, dist_t>> visited_record_base_layer;
+            std::vector<std::tuple<labeltype, labeltype, dist_t>> visited_record_base_layer;
             if (has_deletions_) {
                 res = searchBaseLayerSTForVis<true,true>(
                         currObj, query_data, std::max(ef_, k));
@@ -1259,6 +1259,7 @@ namespace hnswlib {
             }
             while (top_candidates.size() > 0) {
                 std::pair<dist_t, tableint> rez = top_candidates.top();
+                // getExternalLabel可能有问题
                 result.push(std::pair<dist_t, labeltype>(rez.first, getExternalLabel(rez.second)));
                 top_candidates.pop();
             }
@@ -1274,7 +1275,7 @@ namespace hnswlib {
                 std::vector<std::pair<dist_t, tableint>>,
                 CompareByFirst
             >,
-            std::vector<std::tuple<int, int, dist_t>>
+            std::vector<std::tuple<labeltype, labeltype, dist_t>>
         >
         searchBaseLayerSTForVis(tableint ep_id, const void *data_point, size_t ef) const {
             VisitedList *vl = visited_list_pool_->getFreeVisitedList();
@@ -1284,7 +1285,7 @@ namespace hnswlib {
             std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> top_candidates;
             std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> candidate_set;
             ///
-            std::vector<std::tuple<int, int, dist_t>> visited_record;
+            std::vector<std::tuple<labeltype, labeltype, dist_t>> visited_record;
 
             dist_t lowerBound;
             if (!has_deletions || !isMarkedDeleted(ep_id)) {
@@ -1299,7 +1300,7 @@ namespace hnswlib {
 
             visited_array[ep_id] = visited_array_tag;
             ///
-            visited_record.push_back(std::make_tuple(-1, ep_id, lowerBound));
+            visited_record.push_back(std::make_tuple(getExternalLabel(ep_id), getExternalLabel(ep_id), lowerBound));
 
             while (!candidate_set.empty()) {
 
@@ -1342,7 +1343,7 @@ namespace hnswlib {
                         dist_t dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
 
                         ///
-                        visited_record.push_back(std::make_tuple(current_node_id, candidate_id, dist));
+                        visited_record.push_back(std::make_tuple(getExternalLabel(current_node_id), getExternalLabel(candidate_id), dist));
 
                         if (top_candidates.size() < ef || lowerBound > dist) {
                             candidate_set.emplace(-dist, candidate_id);
@@ -1363,7 +1364,7 @@ namespace hnswlib {
                         }
                     } else {
                         ///
-                        visited_record.push_back(std::make_tuple(current_node_id, candidate_id, -1));
+                        visited_record.push_back(std::make_tuple(getExternalLabel(current_node_id), getExternalLabel(candidate_id), -1));
                     }
                 }
             }
