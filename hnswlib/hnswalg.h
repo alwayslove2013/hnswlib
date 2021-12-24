@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <unordered_set>
 #include <list>
+#include <tuple>
 
 namespace hnswlib {
     typedef unsigned int tableint;
@@ -1186,6 +1187,192 @@ namespace hnswlib {
             std::cout << "integrity ok, checked " << connections_checked << " connections\n";
 
         }
+
+        std::pair<
+            std::priority_queue<std::pair<dist_t, labeltype >>,
+            std::vector<std::vector<std::tuple<labeltype, labeltype, dist_t>>>
+        >
+        searchKnnForVis(const void *query_data, size_t k) const {
+            std::priority_queue<std::pair<dist_t, labeltype >> result;
+            std::vector<
+                std::vector<std::tuple<labeltype, labeltype, dist_t>>
+            > visited_records;
+            // if (cur_element_count == 0) return result;
+            if (cur_element_count == 0) return std::make_pair(result, visited_records);
+
+            tableint currObj = enterpoint_node_;
+            dist_t curdist = fstdistfunc_(query_data, getDataByInternalId(enterpoint_node_), dist_func_param_);
+
+            // ef = 1
+            for (int level = maxlevel_; level > 0; level--) {
+                std::vector<std::tuple<labeltype, labeltype, dist_t>> visited_record_level;
+                visited_record_level.push_back(std::make_tuple(getExternalLabel(currObj), getExternalLabel(currObj), curdist));
+                bool changed = true;
+                while (changed) {
+                    changed = false;
+                    unsigned int *data;
+
+                    data = (unsigned int *) get_linklist(currObj, level);
+                    int size = getListCount(data);
+                    metric_hops++;  // test - compute recall;
+                    metric_distance_computations+=size;
+
+                    tableint *datal = (tableint *) (data + 1); // why +1 ?
+                    for (int i = 0; i < size; i++) {
+                        tableint cand = datal[i];
+                        if (cand < 0 || cand > max_elements_)
+                            throw std::runtime_error("cand error");
+                        dist_t d = fstdistfunc_(query_data, getDataByInternalId(cand), dist_func_param_);
+                        visited_record_level.push_back(std::make_tuple(getExternalLabel(currObj), getExternalLabel(cand), d));
+
+                        if (d < curdist) {
+                            curdist = d;
+                            currObj = cand;
+                            changed = true;
+                        }
+                    }
+                }
+                visited_records.push_back(visited_record_level);
+            }
+
+            std::pair<
+                std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst>,
+                std::vector<std::tuple<labeltype, labeltype, dist_t>>
+            > res;
+            std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> top_candidates;
+            std::vector<std::tuple<labeltype, labeltype, dist_t>> visited_record_base_layer;
+            if (has_deletions_) {
+                res = searchBaseLayerSTForVis<true,true>(
+                        currObj, query_data, std::max(ef_, k));
+            }
+            else{
+                res = searchBaseLayerSTForVis<false,true>(
+                        currObj, query_data, std::max(ef_, k));
+            }
+            
+            top_candidates = res.first;
+            visited_record_base_layer = res.second;
+            visited_records.push_back(visited_record_base_layer);
+
+            while (top_candidates.size() > k) {
+                top_candidates.pop();
+            }
+            while (top_candidates.size() > 0) {
+                std::pair<dist_t, tableint> rez = top_candidates.top();
+                // getExternalLabel可能有问题
+                result.push(std::pair<dist_t, labeltype>(rez.first, getExternalLabel(rez.second)));
+                top_candidates.pop();
+            }
+            // return result;
+
+            return std::make_pair(result, visited_records);
+        };
+
+        template <bool has_deletions, bool collect_metrics=false>
+        std::pair<
+            std::priority_queue<
+                std::pair<dist_t, tableint>,
+                std::vector<std::pair<dist_t, tableint>>,
+                CompareByFirst
+            >,
+            std::vector<std::tuple<labeltype, labeltype, dist_t>>
+        >
+        searchBaseLayerSTForVis(tableint ep_id, const void *data_point, size_t ef) const {
+            VisitedList *vl = visited_list_pool_->getFreeVisitedList();
+            vl_type *visited_array = vl->mass;
+            vl_type visited_array_tag = vl->curV;
+
+            std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> top_candidates;
+            std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> candidate_set;
+            ///
+            std::vector<std::tuple<labeltype, labeltype, dist_t>> visited_record;
+
+            dist_t lowerBound;
+            if (!has_deletions || !isMarkedDeleted(ep_id)) {
+                dist_t dist = fstdistfunc_(data_point, getDataByInternalId(ep_id), dist_func_param_);
+                lowerBound = dist;
+                top_candidates.emplace(dist, ep_id);
+                candidate_set.emplace(-dist, ep_id);
+            } else {
+                lowerBound = std::numeric_limits<dist_t>::max();
+                candidate_set.emplace(-lowerBound, ep_id);
+            }
+
+            visited_array[ep_id] = visited_array_tag;
+            ///
+            visited_record.push_back(std::make_tuple(getExternalLabel(ep_id), getExternalLabel(ep_id), lowerBound));
+
+            while (!candidate_set.empty()) {
+
+                std::pair<dist_t, tableint> current_node_pair = candidate_set.top();
+
+                if ((-current_node_pair.first) > lowerBound) {
+                    break;
+                }
+                candidate_set.pop();
+
+                tableint current_node_id = current_node_pair.second;
+                int *data = (int *) get_linklist0(current_node_id);
+                size_t size = getListCount((linklistsizeint*)data);
+//                bool cur_node_deleted = isMarkedDeleted(current_node_id);
+                if(collect_metrics){
+                    metric_hops++;
+                    metric_distance_computations+=size;
+                }
+
+#ifdef USE_SSE
+                _mm_prefetch((char *) (visited_array + *(data + 1)), _MM_HINT_T0);
+                _mm_prefetch((char *) (visited_array + *(data + 1) + 64), _MM_HINT_T0);
+                _mm_prefetch(data_level0_memory_ + (*(data + 1)) * size_data_per_element_ + offsetData_, _MM_HINT_T0);
+                _mm_prefetch((char *) (data + 2), _MM_HINT_T0);
+#endif
+
+                for (size_t j = 1; j <= size; j++) {
+                    int candidate_id = *(data + j);
+//                    if (candidate_id == 0) continue;
+#ifdef USE_SSE
+                    _mm_prefetch((char *) (visited_array + *(data + j + 1)), _MM_HINT_T0);
+                    _mm_prefetch(data_level0_memory_ + (*(data + j + 1)) * size_data_per_element_ + offsetData_,
+                                 _MM_HINT_T0);////////////
+#endif
+                    if (!(visited_array[candidate_id] == visited_array_tag)) {
+                        
+                        visited_array[candidate_id] = visited_array_tag;
+
+                        char *currObj1 = (getDataByInternalId(candidate_id));
+                        dist_t dist = fstdistfunc_(data_point, currObj1, dist_func_param_);
+
+                        ///
+                        visited_record.push_back(std::make_tuple(getExternalLabel(current_node_id), getExternalLabel(candidate_id), dist));
+
+                        if (top_candidates.size() < ef || lowerBound > dist) {
+                            candidate_set.emplace(-dist, candidate_id);
+#ifdef USE_SSE
+                            _mm_prefetch(data_level0_memory_ + candidate_set.top().second * size_data_per_element_ +
+                                         offsetLevel0_,///////////
+                                         _MM_HINT_T0);////////////////////////
+#endif
+
+                            if (!has_deletions || !isMarkedDeleted(candidate_id))
+                                top_candidates.emplace(dist, candidate_id);
+
+                            if (top_candidates.size() > ef)
+                                top_candidates.pop();
+
+                            if (!top_candidates.empty())
+                                lowerBound = top_candidates.top().first;
+                        }
+                    } else {
+                        ///
+                        visited_record.push_back(std::make_tuple(getExternalLabel(current_node_id), getExternalLabel(candidate_id), -1));
+                    }
+                }
+            }
+
+            visited_list_pool_->releaseVisitedList(vl);
+            return std::make_pair(top_candidates, visited_record);
+        }
+
 
     };
 
