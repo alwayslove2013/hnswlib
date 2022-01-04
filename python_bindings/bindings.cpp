@@ -646,7 +646,7 @@ public:
 
         std::map<int, 
             std::vector<
-                std::vector<std::tuple<int, int, dist_t>>
+                std::vector<std::tuple<hnswlib::labeltype, hnswlib::labeltype, dist_t>>
             >
         > data_visited_records;
 
@@ -675,13 +675,12 @@ public:
 
             data_numpy_l = new hnswlib::labeltype[rows * k];
             data_numpy_d = new dist_t[rows * k];
-            // data_visited_records = new std::vector<std::vector<std::tuple<int, int, dist_t>>>[rows];
 
             if(normalize==false) {
                 ParallelFor(0, rows, num_threads, [&](size_t row, size_t threadId) {
                                 std::pair<
                                     std::priority_queue<std::pair<dist_t, hnswlib::labeltype >>,
-                                    std::vector<std::vector<std::tuple<int, int, dist_t>>>
+                                    std::vector<std::vector<std::tuple<hnswlib::labeltype, hnswlib::labeltype, dist_t>>>
                                 > res = appr_alg->searchKnnForVis(
                                         (void *) items.data(row), k);
 
@@ -710,7 +709,7 @@ public:
                                 
                                 std::pair<
                                     std::priority_queue<std::pair<dist_t, hnswlib::labeltype >>,
-                                    std::vector<std::vector<std::tuple<int, int, dist_t>>>
+                                    std::vector<std::vector<std::tuple<hnswlib::labeltype, hnswlib::labeltype, dist_t>>>
                                 > res = appr_alg->searchKnnForVis(
                                         (void *) (norm_array.data()+start_idx), k);
 
