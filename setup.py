@@ -31,7 +31,7 @@ extra_objects = []
 
 ext_modules = [
     Extension(
-        'hnswlib',
+        'hnswlib4vis',
         source_files,
         include_dirs=include_dirs,
         libraries=libraries,
@@ -110,8 +110,8 @@ setup(
     name='hnswlib4vis',
     version=__version__,
     description='hnswlib for visualization',
-    author='Yury Malkov and others; [hnswlib4vis] min.tian from zilliz',
-    author_email='min.tian.cn@gmail.com',
+    author='[hnswlib] Yury Malkov and others; [hnswlib4vis] min.tian from zilliz',
+    author_email='[hnswlib4vis] min.tian.cn@gmail.com',
     url='https://github.com/alwayslove2013/hnswlib/tree/minmin',
     long_description="""hnsw""",
     ext_modules=ext_modules,
