@@ -111,7 +111,7 @@ setup(
     version=__version__,
     description='hnswlib for visualization',
     author='[hnswlib] Yury Malkov and others; [hnswlib4vis] min.tian from zilliz',
-    author_email='[hnswlib4vis] min.tian.cn@gmail.com',
+    author_email='min.tian.cn@gmail.com',
     url='https://github.com/alwayslove2013/hnswlib/tree/minmin',
     long_description="""hnsw""",
     ext_modules=ext_modules,
