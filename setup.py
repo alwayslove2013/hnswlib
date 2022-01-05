@@ -31,7 +31,7 @@ extra_objects = []
 
 ext_modules = [
     Extension(
-        'hnswlib',
+        'hnswlib4vis',
         source_files,
         include_dirs=include_dirs,
         libraries=libraries,
@@ -107,11 +107,12 @@ class BuildExt(build_ext):
 
 
 setup(
-    name='hnswlib',
+    name='hnswlib4vis',
     version=__version__,
-    description='hnswlib',
-    author='Yury Malkov and others',
-    url='https://github.com/yurymalkov/hnsw',
+    description='hnswlib for visualization',
+    author='[hnswlib] Yury Malkov and others; [hnswlib4vis] min.tian from zilliz',
+    author_email='min.tian.cn@gmail.com',
+    url='https://github.com/alwayslove2013/hnswlib/tree/minmin',
     long_description="""hnsw""",
     ext_modules=ext_modules,
     install_requires=['numpy'],

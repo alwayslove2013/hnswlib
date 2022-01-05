@@ -1255,7 +1255,11 @@ namespace hnswlib {
             > res;
             std::priority_queue<std::pair<dist_t, tableint>, std::vector<std::pair<dist_t, tableint>>, CompareByFirst> top_candidates;
             std::vector<std::tuple<labeltype, labeltype, dist_t>> visited_record_base_layer;
+<<<<<<< HEAD
             if (has_deletions_) {
+=======
+            if (num_deleted_) {
+>>>>>>> minmin
                 res = searchBaseLayerSTForVis<true,true>(
                         currObj, query_data, std::max(ef_, k));
             }
@@ -1273,7 +1277,10 @@ namespace hnswlib {
             }
             while (top_candidates.size() > 0) {
                 std::pair<dist_t, tableint> rez = top_candidates.top();
+<<<<<<< HEAD
                 // getExternalLabel可能有问题
+=======
+>>>>>>> minmin
                 result.push(std::pair<dist_t, labeltype>(rez.first, getExternalLabel(rez.second)));
                 top_candidates.pop();
             }

@@ -1,4 +1,4 @@
-import hnswlib
+import hnswlib4vis
 import numpy as np
 
 dim = 32
@@ -10,8 +10,8 @@ nun_queries = 10
 data = np.float32(np.random.random((num_elements, dim)))
 
 # Declaring index
-hnsw_index = hnswlib.Index(space='l2', dim=dim)  # possible options are l2, cosine or ip
-bf_index = hnswlib.BFIndex(space='l2', dim=dim)
+hnsw_index = hnswlib4vis.Index(space='l2', dim=dim)  # possible options are l2, cosine or ip
+bf_index = hnswlib4vis.BFIndex(space='l2', dim=dim)
 
 # Initing both hnsw and brute force indices
 # max_elements - the maximum number of elements (capacity). Will throw an exception if exceeded
@@ -66,7 +66,7 @@ bf_index.save_index(index_path)
 del bf_index
 
 # Re-initiating, loading the index
-bf_index = hnswlib.BFIndex(space='l2', dim=dim)
+bf_index = hnswlib4vis.BFIndex(space='l2', dim=dim)
 
 print("\nLoading index from '%s'\n" % index_path)
 bf_index.load_index(index_path)

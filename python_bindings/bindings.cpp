@@ -951,8 +951,8 @@ public:
 
 };
 
-PYBIND11_PLUGIN(hnswlib) {
-        py::module m("hnswlib");
+PYBIND11_PLUGIN(hnswlib4vis) {
+        py::module m("hnswlib4vis");
 
         py::class_<Index<float>>(m, "Index")
         .def(py::init(&Index<float>::createFromParams), py::arg("params"))

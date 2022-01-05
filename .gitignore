@@ -1,4 +1,5 @@
 hnswlib.egg-info/
+hnswlib4vis.egg-info/
 build/
 dist/
 tmp/
@@ -6,6 +7,7 @@ python_bindings/tests/__pycache__/
 *.pyd
 hnswlib.cpython*.so
 var/
+/stable_dist
 .idea/
 .vscode/
 
